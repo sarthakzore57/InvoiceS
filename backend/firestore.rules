@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function employeeDoc() {
+      return get(/databases/$(database)/documents/employees/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && employeeDoc().data.role == 'admin';
+    }
+
+    match /employees/{employeeUid} {
+      allow create: if signedIn() && employeeUid == request.auth.uid;
+      allow read: if signedIn();
+      allow update: if signedIn() && (employeeUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /vendors/{vendorId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /customers/{customerId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /sales/{saleId} {
+      allow read, create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /counters/{counterId} {
+      allow read, update, create: if signedIn();
+    }
+  }
+}

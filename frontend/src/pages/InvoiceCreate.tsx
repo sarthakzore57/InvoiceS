@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getCustomerByMobile, upsertCustomer } from '../services/customerService';
 import { nextInvoiceNumber, peekNextInvoiceNumber, saveSale } from '../services/invoiceService';
 import { paymentMethods, productCatalog, snaxlayBusiness, type ProductItem, type Sale, type Vendor } from '../types';
-import { formatCurrency, invoiceTotals, itemTotal } from '../utils/calculations';
+import { formatCurrency, invoiceTotals, itemTotal, roundCurrency } from '../utils/calculations';
 import { createInvoicePdf, downloadPdf } from '../utils/pdf';
 
 const invoiceSchema = z.object({
@@ -25,10 +25,10 @@ const blankItem = (): ProductItem => ({
   category: productCatalog[0].category,
   quantity: 1,
   unit: productCatalog[0].unit,
-  mrp: productCatalog[0].mrp,
-  price: productCatalog[0].mrp,
+  mrp: 0,
+  price: 0,
   discount: 0,
-  total: productCatalog[0].mrp,
+  total: 0,
 });
 
 async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs = 25000) {
@@ -73,9 +73,9 @@ export default function InvoiceCreate() {
       current.map((item) => {
         if (item.id !== id) return item;
         const next = { ...item, ...patch };
+        const discount = next.mrp > 0 ? roundCurrency(((next.mrp - next.price) / next.mrp) * 100) : 0;
         const total = itemTotal(next);
-        const price = next.mrp - next.mrp * (next.discount / 100);
-        return { ...next, price, total };
+        return { ...next, discount, total };
       }),
     );
   }
@@ -86,8 +86,6 @@ export default function InvoiceCreate() {
       variant: product.variant,
       category: product.category,
       unit: product.unit,
-      mrp: product.mrp,
-      price: product.mrp,
     });
   }
 
@@ -120,14 +118,14 @@ export default function InvoiceCreate() {
       customerAddress,
       paidAmount,
     });
-    const rowError = items.some((item) => !item.productName || !item.variant || item.quantity <= 0 || item.mrp <= 0);
+    const rowError = items.some((item) => !item.productName || !item.variant || item.quantity <= 0 || item.mrp <= 0 || item.price <= 0);
     if (!validation.success || rowError) {
       const errors = validation.success
         ? {}
         : Object.fromEntries(
             Object.entries(validation.error.flatten().fieldErrors).map(([key, value]) => [key, value?.[0] ?? 'Invalid value']),
           );
-      if (rowError) errors.items = 'Each product row needs a product name, variant, quantity, and MRP';
+      if (rowError) errors.items = 'Each product row needs a product name, variant, quantity, MRP, and rate';
       setFormErrors(errors);
       toast.error(Object.values(errors)[0] ?? 'Please complete invoice details and product rows');
       return;
@@ -289,13 +287,13 @@ export default function InvoiceCreate() {
                   <Field label="Unit"><input className="field" value={item.unit} onChange={(event) => updateItem(item.id, { unit: event.target.value })} /></Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="MRP"><input className="field" value={formatCurrency(item.mrp)} readOnly /></Field>
-                  <Field label="Discount %"><input className="field" type="number" value={item.discount} onChange={(event) => updateItem(item.id, { discount: Number(event.target.value) })} /></Field>
+                  <Field label="MRP"><input className="field" type="number" min="0" value={item.mrp} onChange={(event) => updateItem(item.id, { mrp: Number(event.target.value) })} /></Field>
+                  <Field label="Rate"><input className="field" type="number" min="0" value={item.price} onChange={(event) => updateItem(item.id, { price: Number(event.target.value) })} /></Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3 text-sm font-bold dark:bg-slate-900">
                   <div>
-                    <p className="text-xs uppercase text-slate-500">Rate</p>
-                    <p>{formatCurrency(item.price)}</p>
+                    <p className="text-xs uppercase text-slate-500">Discount</p>
+                    <p>{item.discount.toLocaleString('en-IN')}%</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs uppercase text-slate-500">Total</p>
@@ -325,9 +323,9 @@ export default function InvoiceCreate() {
                   </td>
                   <td className="p-2"><input className="field" type="number" value={item.quantity} onChange={(event) => updateItem(item.id, { quantity: Number(event.target.value) })} /></td>
                   <td className="p-2"><input className="field" value={item.unit} onChange={(event) => updateItem(item.id, { unit: event.target.value })} /></td>
-                  <td className="p-2"><input className="field" value={formatCurrency(item.mrp)} readOnly /></td>
-                  <td className="p-2"><input className="field" type="number" value={item.discount} onChange={(event) => updateItem(item.id, { discount: Number(event.target.value) })} /></td>
-                  <td className="p-2 font-semibold">{formatCurrency(item.price)}</td>
+                  <td className="p-2"><input className="field" type="number" min="0" value={item.mrp} onChange={(event) => updateItem(item.id, { mrp: Number(event.target.value) })} /></td>
+                  <td className="p-2">{item.discount.toLocaleString('en-IN')}%</td>
+                  <td className="p-2"><input className="field" type="number" min="0" value={item.price} onChange={(event) => updateItem(item.id, { price: Number(event.target.value) })} /></td>
                   <td className="p-2 font-bold">{formatCurrency(item.total)}</td>
                   <td className="p-2"><button className="icon-btn" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))} title="Remove product"><Trash2 size={16} /></button></td>
                 </tr>

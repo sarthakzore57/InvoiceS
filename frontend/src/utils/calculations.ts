@@ -1,18 +1,16 @@
 import type { InvoiceStatus, ProductItem } from '../types';
 
 export function itemTotal(item: Omit<ProductItem, 'total'>) {
-  const gross = item.quantity * item.mrp;
-  const discountAmount = gross * (item.discount / 100);
-  return roundCurrency(gross - discountAmount);
+  return roundCurrency(item.quantity * item.price);
 }
 
 export function invoiceTotals(items: ProductItem[], paidAmount: number) {
   const subtotal = roundCurrency(items.reduce((sum, item) => sum + item.quantity * item.mrp, 0));
   const discount = roundCurrency(
-    items.reduce((sum, item) => sum + item.quantity * item.mrp * (item.discount / 100), 0),
+    items.reduce((sum, item) => sum + item.quantity * (item.mrp - item.price), 0),
   );
   const gst = 0;
-  const exactGrandTotal = subtotal - discount;
+  const exactGrandTotal = roundCurrency(items.reduce((sum, item) => sum + item.total, 0));
   const grandTotal = Math.round(exactGrandTotal);
   const roundOff = roundCurrency(grandTotal - exactGrandTotal);
   const pendingAmount = Math.max(0, roundCurrency(grandTotal - paidAmount));

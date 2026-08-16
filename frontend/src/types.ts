@@ -102,6 +102,7 @@ export const categories = [
   'GE Almondes',
   'GE Black Raisins',
   'GE Cashews',
+  'Trifusion',
 ] as const;
 export const paymentMethods: PaymentMethod[] = ['Cash', 'UPI', 'Card', 'Bank Transfer'];
 export const snaxlayBusiness = {
@@ -209,4 +210,11 @@ export const productCatalog = [
   { productName: 'GE Black Raisins', variant: '1000g', category: 'GE Black Raisins', unit: 'Pcs' },
   { productName: 'GE Cashews', variant: '160g', category: 'GE Cashews', unit: 'Pcs' },
   { productName: 'GE Cashews', variant: '200g', category: 'GE Cashews', unit: 'Pcs' },
+  { productName: 'Trifusion', variant: '160g', category: 'Trifusion', unit: 'Pcs' },
+  { productName: 'Trifusion', variant: '200g', category: 'Trifusion', unit: 'Pcs' },
+  { productName: 'Trifusion', variant: '250g', category: 'Trifusion', unit: 'Pcs' },
+  { productName: 'Trifusion', variant: '425g', category: 'Trifusion', unit: 'Pcs' },
+  { productName: 'Trifusion', variant: '500g', category: 'Trifusion', unit: 'Pcs' },
+  { productName: 'Trifusion', variant: '900g', category: 'Trifusion', unit: 'Pcs' },
+  { productName: 'Trifusion', variant: '1kg', category: 'Trifusion', unit: 'Pcs' },
 ] as const;

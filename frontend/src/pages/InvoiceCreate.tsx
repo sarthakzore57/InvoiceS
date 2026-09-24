@@ -1,11 +1,12 @@
 import { FileCheck2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { z } from 'zod';
 import { useAuth } from '../contexts/AuthContext';
-import { getCustomerByMobile, upsertCustomer } from '../services/customerService';
-import { nextInvoiceNumber, peekNextInvoiceNumber, saveSale } from '../services/invoiceService';
+import { customerIdFromMobile, getCustomerByMobile, upsertCustomer } from '../services/customerService';
+import { getSale, nextInvoiceNumber, peekNextInvoiceNumber, saveSale, updateSale } from '../services/invoiceService';
 import { paymentMethods, productCatalog, snaxlayBusiness, type ProductItem, type Sale, type Vendor } from '../types';
 import { formatCurrency, invoiceTotals, itemTotal, roundCurrency } from '../utils/calculations';
 import { createInvoicePdf, downloadPdf } from '../utils/pdf';
@@ -46,6 +47,9 @@ async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs = 25
 
 export default function InvoiceCreate() {
   const { user, employee } = useAuth();
+  const { invoiceId } = useParams();
+  const navigate = useNavigate();
+  const isEditMode = Boolean(invoiceId);
   const [invoiceNumber, setInvoiceNumber] = useState('SNX-0000-000000');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [customerName, setCustomerName] = useState('');
@@ -60,10 +64,40 @@ export default function InvoiceCreate() {
   const [saving, setSaving] = useState(false);
   const [saveStep, setSaveStep] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [existingSale, setExistingSale] = useState<Sale | null>(null);
 
   useEffect(() => {
-    peekNextInvoiceNumber().then(setInvoiceNumber).catch(() => setInvoiceNumber('SNX-YYYY-000001'));
-  }, []);
+    if (!invoiceId) {
+      peekNextInvoiceNumber().then(setInvoiceNumber).catch(() => setInvoiceNumber('SNX-YYYY-000001'));
+      return;
+    }
+
+    async function loadInvoice() {
+      try {
+        const sale = await getSale(invoiceId!);
+        if (!sale) {
+          toast.error('Invoice not found');
+          navigate('/sales');
+          return;
+        }
+        setExistingSale(sale);
+        setInvoiceNumber(sale.invoiceNumber);
+        setInvoiceDate(sale.invoiceDate);
+        setCustomerName(sale.customerName);
+        setCustomerMobile(sale.customerMobile);
+        setCustomerAddress(sale.customerAddress ?? '');
+        setCustomerGst(sale.customerGst ?? '');
+        setItems(sale.items.length ? sale.items.map((item) => ({ ...item, id: item.id || crypto.randomUUID() })) : [blankItem()]);
+        setPaidAmount(sale.paidAmount);
+        setPaymentMethod(sale.paymentMethod);
+        setNotes(sale.notes ?? '');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Could not load invoice');
+      }
+    }
+
+    loadInvoice();
+  }, [invoiceId, navigate]);
 
   const totals = useMemo(() => invoiceTotals(items, paidAmount), [items, paidAmount]);
   const availableCategories = useMemo(() => [...new Set(productCatalog.map((product) => product.category))], []);
@@ -133,9 +167,9 @@ export default function InvoiceCreate() {
     setFormErrors({});
 
     setSaving(true);
-    setSaveStep('Creating invoice number...');
+    setSaveStep(isEditMode ? 'Updating invoice...' : 'Creating invoice number...');
     try {
-      const actualInvoiceNumber = await withTimeout('Invoice number creation', nextInvoiceNumber(new Date(invoiceDate)));
+      const actualInvoiceNumber = isEditMode ? invoiceNumber : await withTimeout('Invoice number creation', nextInvoiceNumber(new Date(invoiceDate)));
       const vendor: Vendor = {
         vendorId: 'SNAXLAY',
         vendorName: snaxlayBusiness.name,
@@ -146,19 +180,21 @@ export default function InvoiceCreate() {
         createdAt: { toDate: () => new Date() } as Vendor['createdAt'],
       };
 
-      setSaveStep('Saving customer...');
-      const customer = await withTimeout(
-        'Customer save',
-        upsertCustomer({
-          customerName,
-          mobile: customerMobile,
-          address: customerAddress,
-          grandTotal: totals.grandTotal,
-          pendingAmount: totals.pendingAmount,
-        }),
-      );
+      setSaveStep(isEditMode ? 'Preparing invoice...' : 'Saving customer...');
+      const customer = isEditMode
+        ? { customerId: existingSale?.customerId ?? customerIdFromMobile(customerMobile) }
+        : await withTimeout(
+            'Customer save',
+            upsertCustomer({
+              customerName,
+              mobile: customerMobile,
+              address: customerAddress,
+              grandTotal: totals.grandTotal,
+              pendingAmount: totals.pendingAmount,
+            }),
+          );
 
-      const sale: Sale = {
+      const sale: Omit<Sale, 'id' | 'timestamp'> = {
         invoiceId: actualInvoiceNumber,
         invoiceNumber: actualInvoiceNumber,
         vendorId: vendor.vendorId,
@@ -185,18 +221,22 @@ export default function InvoiceCreate() {
         status: totals.status,
         createdBy: user?.uid ?? '',
         employeeName: employee?.name ?? user?.email ?? 'Employee',
-        timestamp: { toDate: () => new Date() } as Sale['timestamp'],
       };
 
       setSaveStep('Creating PDF...');
-      const pdf = await withTimeout('PDF creation', createInvoicePdf(sale));
+      const pdf = await withTimeout('PDF creation', createInvoicePdf({ ...sale, id: invoiceId, timestamp: existingSale?.timestamp ?? ({ toDate: () => new Date() } as Sale['timestamp']) }));
 
-      setSaveStep('Saving sale...');
-      await withTimeout('Sale save', saveSale(sale));
+      setSaveStep(isEditMode ? 'Saving changes...' : 'Saving sale...');
+      if (isEditMode && invoiceId) {
+        await withTimeout('Invoice update', updateSale(invoiceId, sale));
+      } else {
+        await withTimeout('Sale save', saveSale(sale));
+      }
 
       setInvoiceNumber(actualInvoiceNumber);
       downloadPdf(pdf, `${actualInvoiceNumber}.pdf`);
-      toast.success('Invoice saved and PDF downloaded');
+      toast.success(isEditMode ? 'Invoice updated and PDF downloaded' : 'Invoice saved and PDF downloaded');
+      if (isEditMode) navigate('/sales');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Invoice generation failed';
       toast.error(saveStep ? `${saveStep.replace(/\.\.\.$/, '')}: ${message}` : message);
@@ -210,12 +250,12 @@ export default function InvoiceCreate() {
     <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl font-black tracking-tight sm:text-2xl">Create Invoice</h1>
+          <h1 className="text-xl font-black tracking-tight sm:text-2xl">{isEditMode ? 'Edit Invoice' : 'Create Invoice'}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">MRP discount, GST included, local PDF download.</p>
         </div>
         <button className="btn-primary w-full sm:w-auto" onClick={generateInvoice} disabled={saving}>
           <FileCheck2 size={18} />
-          {saving ? saveStep || 'Generating...' : 'Generate Invoice'}
+          {saving ? saveStep || 'Generating...' : isEditMode ? 'Update Invoice' : 'Generate Invoice'}
         </button>
       </div>
 

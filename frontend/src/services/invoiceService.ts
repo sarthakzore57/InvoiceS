@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   increment,
@@ -9,6 +10,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  updateDoc,
   where,
   getDocs,
   type QueryConstraint,
@@ -45,6 +47,22 @@ export async function saveSale(sale: Omit<Sale, 'id' | 'timestamp'>) {
     timestamp: serverTimestamp(),
   });
   return docRef.id;
+}
+
+export async function getSale(id: string) {
+  const snap = await getDoc(doc(db, 'sales', id));
+  return snap.exists() ? ({ id: snap.id, ...snap.data() } as Sale) : null;
+}
+
+export async function updateSale(id: string, sale: Omit<Sale, 'id' | 'timestamp'>) {
+  await updateDoc(doc(db, 'sales', id), {
+    ...sale,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteSale(id: string) {
+  await deleteDoc(doc(db, 'sales', id));
 }
 
 export async function recentSales(count = 8) {

@@ -56,7 +56,7 @@ export default function Sales() {
         <button className="btn-secondary" onClick={loadSales}>Apply</button>
       </section>
       <section className="panel">
-        <RecentSalesTable sales={filtered} />
+        <RecentSalesTable sales={filtered} onDeleted={(id) => setSales((current) => current.filter((sale) => sale.id !== id))} />
       </section>
     </div>
   );

@@ -1,12 +1,12 @@
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Tooltip } from 'chart.js';
-import { CalendarDays, Download, FilePlus2, IndianRupee, Store, Users } from 'lucide-react';
+import { CalendarDays, Download, FilePlus2, IndianRupee, Pencil, Store, Trash2, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import EmptyState from '../components/ui/EmptyState';
 import StatCard from '../components/ui/StatCard';
-import { recentSales, salesBetween } from '../services/invoiceService';
+import { deleteSale, recentSales, salesBetween } from '../services/invoiceService';
 import { categorySales, groupedSales, todayMetrics } from '../services/reportService';
 import type { Sale } from '../types';
 import { formatCurrency } from '../utils/calculations';
@@ -117,14 +117,15 @@ export default function Dashboard() {
 
       <section className="panel overflow-hidden">
         <h2 className="mb-4 text-lg font-black">Recent Sales</h2>
-        <RecentSalesTable sales={sales.slice(0, 8)} />
+        <RecentSalesTable sales={sales.slice(0, 8)} onDeleted={(id) => setSales((current) => current.filter((sale) => sale.id !== id))} />
       </section>
     </div>
   );
 }
 
-export function RecentSalesTable({ sales }: { sales: Sale[] }) {
+export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDeleted?: (id: string) => void }) {
   const [downloading, setDownloading] = useState('');
+  const [deleting, setDeleting] = useState('');
 
   async function handleDownloadPdf(sale: Sale) {
     setDownloading(sale.invoiceNumber);
@@ -135,6 +136,21 @@ export function RecentSalesTable({ sales }: { sales: Sale[] }) {
       toast.error(error instanceof Error ? error.message : 'Could not generate PDF');
     } finally {
       setDownloading('');
+    }
+  }
+
+  async function handleDelete(sale: Sale) {
+    if (!sale.id) return;
+    if (!window.confirm(`Delete invoice ${sale.invoiceNumber}?`)) return;
+    setDeleting(sale.id);
+    try {
+      await deleteSale(sale.id);
+      onDeleted?.(sale.id);
+      toast.success('Invoice deleted');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete invoice');
+    } finally {
+      setDeleting('');
     }
   }
 
@@ -161,10 +177,20 @@ export function RecentSalesTable({ sales }: { sales: Sale[] }) {
                 <p className="font-black">{formatCurrency(sale.grandTotal)}</p>
               </div>
             </div>
-            <button className="btn-secondary mt-3 w-full" onClick={() => handleDownloadPdf(sale)} disabled={downloading === sale.invoiceNumber}>
-              <Download size={16} />
-              {downloading === sale.invoiceNumber ? 'Generating' : 'Download PDF'}
-            </button>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <button className="btn-secondary px-2" onClick={() => handleDownloadPdf(sale)} disabled={downloading === sale.invoiceNumber}>
+                <Download size={16} />
+                {downloading === sale.invoiceNumber ? 'Wait' : 'PDF'}
+              </button>
+              <Link className="btn-secondary px-2" to={sale.id ? `/invoice/${sale.id}/edit` : '/sales'}>
+                <Pencil size={16} />
+                Edit
+              </Link>
+              <button className="btn-secondary px-2 text-red-600" onClick={() => handleDelete(sale)} disabled={!sale.id || deleting === sale.id}>
+                <Trash2 size={16} />
+                {deleting === sale.id ? 'Wait' : 'Delete'}
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -172,7 +198,7 @@ export function RecentSalesTable({ sales }: { sales: Sale[] }) {
       <table className="w-full min-w-[860px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
           <tr>
-            {['Invoice Number', 'Customer', 'Vendor', 'Date', 'Amount', 'Status', 'PDF'].map((heading) => (
+            {['Invoice Number', 'Customer', 'Vendor', 'Date', 'Amount', 'Status', 'Actions'].map((heading) => (
               <th key={heading} className="border-b border-slate-200 px-3 py-3 dark:border-slate-800">{heading}</th>
             ))}
           </tr>
@@ -187,10 +213,17 @@ export function RecentSalesTable({ sales }: { sales: Sale[] }) {
               <td className="px-3 py-3">{formatCurrency(sale.grandTotal)}</td>
               <td className="px-3 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.status}</span></td>
               <td className="px-3 py-3">
-                <button className="btn-secondary px-3 py-2" onClick={() => handleDownloadPdf(sale)} disabled={downloading === sale.invoiceNumber}>
-                  <Download size={16} />
-                  {downloading === sale.invoiceNumber ? 'Generating' : 'Download'}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button className="icon-btn h-9 w-9" onClick={() => handleDownloadPdf(sale)} disabled={downloading === sale.invoiceNumber} title="Download PDF">
+                    <Download size={16} />
+                  </button>
+                  <Link className="icon-btn h-9 w-9" to={sale.id ? `/invoice/${sale.id}/edit` : '/sales'} title="Edit invoice">
+                    <Pencil size={16} />
+                  </Link>
+                  <button className="icon-btn h-9 w-9 text-red-600" onClick={() => handleDelete(sale)} disabled={!sale.id || deleting === sale.id} title="Delete invoice">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

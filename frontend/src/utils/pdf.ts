@@ -16,6 +16,9 @@ function dateLabel(value: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN');
 }
 
+const productStorageDisclaimer =
+  'Store Snaxlay products in a cool, dry and clean place, away from direct sunlight, heat and moisture. Keep the package properly sealed after opening.';
+
 export async function createInvoicePdf(sale: Sale) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const business = snaxlayBusiness;
@@ -126,6 +129,13 @@ export async function createInvoicePdf(sale: Sale) {
   doc.text(`For ${business.name} ${business.tagline}`, 398, finalY + 78);
   doc.setFont('helvetica', 'normal');
   doc.text('Authorised Signatory', 430, finalY + 132);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('PRODUCT STORAGE DISCLAIMER', 40, 704);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(productStorageDisclaimer, 40, 718, { maxWidth: 500 });
 
   line(738);
   doc.setFontSize(7);

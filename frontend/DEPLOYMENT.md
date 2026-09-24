@@ -19,7 +19,7 @@ Deploy these source/config files:
 - `tailwind.config.js`
 - `postcss.config.js`
 - `eslint.config.js`
-- `firestore.rules`
+- `../backend/firestore.rules`
 - `vercel.json`
 - `render.yaml`
 
@@ -35,7 +35,7 @@ The backend is Firebase:
 
 - Firebase Authentication
 - Cloud Firestore
-- Firestore security rules in `firestore.rules`
+- Firestore security rules in `../backend/firestore.rules`
 
 There is no `backend/` folder to deploy on Render as a web service. On Render, deploy this as a Static Site.
 

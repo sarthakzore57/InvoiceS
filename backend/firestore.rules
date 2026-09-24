@@ -37,7 +37,12 @@ service cloud.firestore {
 
     match /sales/{saleId} {
       allow read, create: if signedIn();
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        signedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid
+      );
+      allow delete: if isAdmin();
     }
 
     match /counters/{counterId} {

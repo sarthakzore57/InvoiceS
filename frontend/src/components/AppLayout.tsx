@@ -1,4 +1,4 @@
-import { BarChart3, FilePlus2, LayoutDashboard, LogOut, Moon, Search, Sun, TableProperties } from 'lucide-react';
+import { BarChart3, FilePlus2, LayoutDashboard, LogOut, MapPinned, Moon, Search, Sun, TableProperties, Tags, Route } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -8,6 +8,9 @@ import { logoutEmployee } from '../services/authService';
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/invoice/new', label: 'Create Invoice', icon: FilePlus2 },
+  { to: '/visit', label: 'Visit', icon: Route },
+  { to: '/areas', label: 'Areas & Outlets', icon: MapPinned },
+  { to: '/products', label: 'Product MRP', icon: Tags },
   { to: '/sales', label: 'Sales', icon: TableProperties },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
 ];

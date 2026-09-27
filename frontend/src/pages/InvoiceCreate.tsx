@@ -1,15 +1,17 @@
 import { FileCheck2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { z } from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { customerIdFromMobile, getCustomerByMobile, upsertCustomer } from '../services/customerService';
 import { getSale, nextInvoiceNumber, peekNextInvoiceNumber, saveSale, updateSale } from '../services/invoiceService';
-import { paymentMethods, productCatalog, snaxlayBusiness, type ProductItem, type Sale, type Vendor } from '../types';
+import { paymentMethods, productCatalog, snaxlayBusiness, type Outlet, type ProductItem, type Sale, type Vendor } from '../types';
 import { formatCurrency, invoiceTotals, itemTotal, roundCurrency } from '../utils/calculations';
 import { createInvoicePdf, downloadPdf } from '../utils/pdf';
+import { getCatalogProducts } from '../services/productService';
+import { getOutlet } from '../services/outletService';
 
 const invoiceSchema = z.object({
   invoiceDate: z.string().min(1, 'Invoice date is required'),
@@ -19,15 +21,15 @@ const invoiceSchema = z.object({
   paidAmount: z.number().min(0),
 });
 
-const blankItem = (): ProductItem => ({
+const blankItem = (catalog = productCatalog): ProductItem => ({
   id: crypto.randomUUID(),
-  productName: productCatalog[0].productName,
-  variant: productCatalog[0].variant,
-  category: productCatalog[0].category,
+  productName: catalog[0].productName,
+  variant: catalog[0].variant,
+  category: catalog[0].category,
   quantity: 1,
-  unit: productCatalog[0].unit,
-  mrp: 0,
-  price: 0,
+  unit: catalog[0].unit,
+  mrp: catalog[0].mrp,
+  price: catalog[0].mrp,
   discount: 0,
   total: 0,
 });
@@ -48,6 +50,7 @@ async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs = 25
 export default function InvoiceCreate() {
   const { user, employee } = useAuth();
   const { invoiceId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isEditMode = Boolean(invoiceId);
   const [invoiceNumber, setInvoiceNumber] = useState('SNX-0000-000000');
@@ -65,6 +68,26 @@ export default function InvoiceCreate() {
   const [saveStep, setSaveStep] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [existingSale, setExistingSale] = useState<Sale | null>(null);
+  const [catalog, setCatalog] = useState(productCatalog);
+  const [visitOutlet, setVisitOutlet] = useState<Outlet | null>(null);
+  const outletId = searchParams.get('outletId');
+
+  useEffect(() => {
+    getCatalogProducts().then((products) => {
+      setCatalog(products);
+      if (!invoiceId) setItems([blankItem(products)]);
+    }).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load product pricing'));
+  }, [invoiceId]);
+
+  useEffect(() => {
+    if (!outletId || invoiceId) return;
+    getOutlet(outletId).then((outlet) => {
+      if (!outlet) return toast.error('Outlet not found');
+      setVisitOutlet(outlet);
+      setCustomerName(outlet.shopName); setCustomerMobile(outlet.contactNumber); setCustomerAddress(outlet.address); setCustomerGst(outlet.gst ?? '');
+      setCustomerInsight(`Visit selected: ${outlet.areaName} | ${outlet.shopName}`);
+    }).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load outlet'));
+  }, [invoiceId, outletId]);
 
   useEffect(() => {
     if (!invoiceId) {
@@ -80,6 +103,11 @@ export default function InvoiceCreate() {
           navigate('/sales');
           return;
         }
+        if (sale.saleStatus === 'Complete') {
+          toast.info('Completed invoices cannot be edited');
+          navigate('/sales');
+          return;
+        }
         setExistingSale(sale);
         setInvoiceNumber(sale.invoiceNumber);
         setInvoiceDate(sale.invoiceDate);
@@ -87,7 +115,7 @@ export default function InvoiceCreate() {
         setCustomerMobile(sale.customerMobile);
         setCustomerAddress(sale.customerAddress ?? '');
         setCustomerGst(sale.customerGst ?? '');
-        setItems(sale.items.length ? sale.items.map((item) => ({ ...item, id: item.id || crypto.randomUUID() })) : [blankItem()]);
+        setItems(sale.items.length ? sale.items.map((item) => ({ ...item, id: item.id || crypto.randomUUID() })) : [blankItem(catalog)]);
         setPaidAmount(sale.paidAmount);
         setPaymentMethod(sale.paymentMethod);
         setNotes(sale.notes ?? '');
@@ -97,10 +125,10 @@ export default function InvoiceCreate() {
     }
 
     loadInvoice();
-  }, [invoiceId, navigate]);
+  }, [catalog, invoiceId, navigate]);
 
   const totals = useMemo(() => invoiceTotals(items, paidAmount), [items, paidAmount]);
-  const availableCategories = useMemo(() => [...new Set(productCatalog.map((product) => product.category))], []);
+  const availableCategories = useMemo(() => [...new Set(catalog.map((product) => product.category))], [catalog]);
 
   function updateItem(id: string, patch: Partial<ProductItem>) {
     setItems((current) =>
@@ -114,22 +142,24 @@ export default function InvoiceCreate() {
     );
   }
 
-  function applyCatalogItem(id: string, product: (typeof productCatalog)[number]) {
+  function applyCatalogItem(id: string, product: (typeof catalog)[number]) {
     updateItem(id, {
       productName: product.productName,
       variant: product.variant,
       category: product.category,
       unit: product.unit,
+      mrp: product.mrp,
+      price: product.mrp,
     });
   }
 
   function selectCategory(id: string, category: string) {
-    const product = productCatalog.find((item) => item.category === category) ?? productCatalog[0];
+    const product = catalog.find((item) => item.category === category) ?? catalog[0];
     applyCatalogItem(id, product);
   }
 
   function selectVariant(id: string, category: string, variantKey: string) {
-    const product = productCatalog.find((item) => `${item.productName}|${item.variant}` === variantKey && item.category === category);
+    const product = catalog.find((item) => `${item.productName}|${item.variant}` === variantKey && item.category === category);
     if (product) applyCatalogItem(id, product);
   }
 
@@ -219,6 +249,11 @@ export default function InvoiceCreate() {
         paymentMethod: paymentMethod as Sale['paymentMethod'],
         notes,
         status: totals.status,
+        saleStatus: existingSale?.saleStatus ?? 'Pending',
+        outletId: existingSale?.outletId ?? visitOutlet?.id,
+        outletName: existingSale?.outletName ?? visitOutlet?.shopName,
+        areaId: existingSale?.areaId ?? visitOutlet?.areaId,
+        areaName: existingSale?.areaName ?? visitOutlet?.areaName,
         createdBy: user?.uid ?? '',
         employeeName: employee?.name ?? user?.email ?? 'Employee',
       };
@@ -293,7 +328,7 @@ export default function InvoiceCreate() {
       <section className="panel">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-black">Products</h2>
-          <button className="btn-secondary shrink-0 px-3 sm:px-4" onClick={() => setItems((current) => [...current, blankItem()])}>
+          <button className="btn-secondary shrink-0 px-3 sm:px-4" onClick={() => setItems((current) => [...current, blankItem(catalog)])}>
             <Plus size={18} />
             Add Product
           </button>
@@ -317,7 +352,7 @@ export default function InvoiceCreate() {
                 </Field>
                 <Field label="Product / Variant">
                   <select className="field" value={`${item.productName}|${item.variant}`} onChange={(event) => selectVariant(item.id, item.category, event.target.value)}>
-                    {productCatalog.filter((product) => product.category === item.category).map((product) => (
+                    {catalog.filter((product) => product.category === item.category).map((product) => (
                       <option key={`${product.productName}-${product.variant}`} value={`${product.productName}|${product.variant}`}>{product.productName} - {product.variant}</option>
                     ))}
                   </select>
@@ -356,7 +391,7 @@ export default function InvoiceCreate() {
                   <td className="p-2"><select className="field" value={item.category} onChange={(event) => selectCategory(item.id, event.target.value)}>{availableCategories.map((category) => <option key={category}>{category}</option>)}</select></td>
                   <td className="p-2">
                     <select className="field" value={`${item.productName}|${item.variant}`} onChange={(event) => selectVariant(item.id, item.category, event.target.value)}>
-                      {productCatalog.filter((product) => product.category === item.category).map((product) => (
+                      {catalog.filter((product) => product.category === item.category).map((product) => (
                         <option key={`${product.productName}-${product.variant}`} value={`${product.productName}|${product.variant}`}>{product.productName} - {product.variant}</option>
                       ))}
                     </select>

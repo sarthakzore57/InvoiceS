@@ -61,6 +61,10 @@ export async function updateSale(id: string, sale: Omit<Sale, 'id' | 'timestamp'
   });
 }
 
+export async function completeSale(id: string) {
+  await updateDoc(doc(db, 'sales', id), { saleStatus: 'Complete', completedAt: serverTimestamp() });
+}
+
 export async function deleteSale(id: string) {
   await deleteDoc(doc(db, 'sales', id));
 }

@@ -1,12 +1,12 @@
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Tooltip } from 'chart.js';
-import { CalendarDays, Download, FilePlus2, IndianRupee, Pencil, Store, Trash2, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Download, FilePlus2, IndianRupee, Pencil, Store, Trash2, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import EmptyState from '../components/ui/EmptyState';
 import StatCard from '../components/ui/StatCard';
-import { deleteSale, recentSales, salesBetween } from '../services/invoiceService';
+import { completeSale, deleteSale, recentSales, salesBetween } from '../services/invoiceService';
 import { categorySales, groupedSales, todayMetrics } from '../services/reportService';
 import type { Sale } from '../types';
 import { formatCurrency } from '../utils/calculations';
@@ -117,15 +117,31 @@ export default function Dashboard() {
 
       <section className="panel overflow-hidden">
         <h2 className="mb-4 text-lg font-black">Recent Sales</h2>
-        <RecentSalesTable sales={sales.slice(0, 8)} onDeleted={(id) => setSales((current) => current.filter((sale) => sale.id !== id))} />
+        <RecentSalesTable sales={sales.slice(0, 8)} onDeleted={() => window.location.reload()} />
       </section>
     </div>
   );
 }
 
-export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDeleted?: (id: string) => void }) {
+export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDeleted?: () => void }) {
   const [downloading, setDownloading] = useState('');
   const [deleting, setDeleting] = useState('');
+  const [completing, setCompleting] = useState('');
+
+  async function handleComplete(sale: Sale) {
+    if (!sale.id || sale.saleStatus === 'Complete') return;
+    if (!window.confirm(`Mark invoice ${sale.invoiceNumber} as complete? It cannot be edited afterward.`)) return;
+    setCompleting(sale.id);
+    try {
+      await completeSale(sale.id);
+      sale.saleStatus = 'Complete';
+      toast.success('Invoice marked complete and locked');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not complete invoice');
+    } finally {
+      setCompleting('');
+    }
+  }
 
   async function handleDownloadPdf(sale: Sale) {
     setDownloading(sale.invoiceNumber);
@@ -145,7 +161,7 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
     setDeleting(sale.id);
     try {
       await deleteSale(sale.id);
-      onDeleted?.(sale.id);
+      onDeleted?.();
       toast.success('Invoice deleted');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not delete invoice');
@@ -165,7 +181,7 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
                 <p className="truncate text-sm font-black">{sale.invoiceNumber}</p>
                 <p className="mt-1 truncate text-sm font-semibold text-slate-600 dark:text-slate-300">{sale.customerName}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.status}</span>
+              <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.saleStatus ?? 'Pending'}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
               <div>
@@ -177,15 +193,13 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
                 <p className="font-black">{formatCurrency(sale.grandTotal)}</p>
               </div>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <button className="btn-secondary px-2" onClick={() => handleDownloadPdf(sale)} disabled={downloading === sale.invoiceNumber}>
                 <Download size={16} />
                 {downloading === sale.invoiceNumber ? 'Wait' : 'PDF'}
               </button>
-              <Link className="btn-secondary px-2" to={sale.id ? `/invoice/${sale.id}/edit` : '/sales'}>
-                <Pencil size={16} />
-                Edit
-              </Link>
+              {sale.saleStatus === 'Complete' ? <span className="btn-secondary px-2 opacity-60"><CheckCircle2 size={16} />Complete</span> : <button className="btn-secondary px-2" onClick={() => handleComplete(sale)} disabled={!sale.id || completing === sale.id}><CheckCircle2 size={16} />{completing === sale.id ? 'Wait' : 'Complete'}</button>}
+              {sale.saleStatus !== 'Complete' ? <Link className="btn-secondary px-2" to={sale.id ? `/invoice/${sale.id}/edit` : '/sales'}><Pencil size={16} />Edit</Link> : null}
               <button className="btn-secondary px-2 text-red-600" onClick={() => handleDelete(sale)} disabled={!sale.id || deleting === sale.id}>
                 <Trash2 size={16} />
                 {deleting === sale.id ? 'Wait' : 'Delete'}
@@ -211,15 +225,13 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
               <td className="px-3 py-3">{sale.vendorName}</td>
               <td className="px-3 py-3">{sale.invoiceDate}</td>
               <td className="px-3 py-3">{formatCurrency(sale.grandTotal)}</td>
-              <td className="px-3 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.status}</span></td>
+              <td className="px-3 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.saleStatus ?? 'Pending'}</span></td>
               <td className="px-3 py-3">
                 <div className="flex flex-wrap gap-2">
                   <button className="icon-btn h-9 w-9" onClick={() => handleDownloadPdf(sale)} disabled={downloading === sale.invoiceNumber} title="Download PDF">
                     <Download size={16} />
                   </button>
-                  <Link className="icon-btn h-9 w-9" to={sale.id ? `/invoice/${sale.id}/edit` : '/sales'} title="Edit invoice">
-                    <Pencil size={16} />
-                  </Link>
+                  {sale.saleStatus !== 'Complete' ? <><Link className="icon-btn h-9 w-9" to={sale.id ? `/invoice/${sale.id}/edit` : '/sales'} title="Edit invoice"><Pencil size={16} /></Link><button className="icon-btn h-9 w-9 text-brand" onClick={() => handleComplete(sale)} disabled={!sale.id || completing === sale.id} title="Mark complete"><CheckCircle2 size={16} /></button></> : <CheckCircle2 className="m-2 text-brand" size={20} />}
                   <button className="icon-btn h-9 w-9 text-red-600" onClick={() => handleDelete(sale)} disabled={!sale.id || deleting === sale.id} title="Delete invoice">
                     <Trash2 size={16} />
                   </button>

@@ -32,16 +32,27 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow write: if signedIn();
+    }
+
+    match /areas/{areaId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /outlets/{outletId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
     }
 
     match /sales/{saleId} {
-      allow read, create: if signedIn();
-      allow update: if isAdmin() || (
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.saleStatus == 'Pending';
+      allow update: if (isAdmin() || (
         signedIn()
         && resource.data.createdBy == request.auth.uid
         && request.resource.data.createdBy == request.auth.uid
-      );
+      )) && resource.data.saleStatus != 'Complete';
       allow delete: if isAdmin();
     }
 

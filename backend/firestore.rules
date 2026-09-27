@@ -56,7 +56,7 @@ service cloud.firestore {
       allow delete: if isAdmin() || (
         signedIn()
         && resource.data.createdBy == request.auth.uid
-        && resource.data.saleStatus != 'Complete'
+        && (!('saleStatus' in resource.data) || resource.data.saleStatus != 'Complete')
       );
     }
 

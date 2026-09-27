@@ -1,7 +1,6 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   increment,
@@ -66,7 +65,28 @@ export async function completeSale(id: string) {
 }
 
 export async function deleteSale(id: string) {
-  await deleteDoc(doc(db, 'sales', id));
+  const saleRef = doc(db, 'sales', id);
+  await runTransaction(db, async (transaction) => {
+    const saleSnapshot = await transaction.get(saleRef);
+    if (!saleSnapshot.exists()) throw new Error('Invoice no longer exists');
+
+    const sale = saleSnapshot.data() as Sale;
+    const customerRef = sale.customerId ? doc(db, 'customers', sale.customerId) : null;
+    if (customerRef) {
+      const customerSnapshot = await transaction.get(customerRef);
+      if (customerSnapshot.exists()) {
+        const customer = customerSnapshot.data();
+        transaction.update(customerRef, {
+          totalPurchase: Math.max(0, Number(customer.totalPurchase ?? 0) - Number(sale.grandTotal ?? 0)),
+          previousOrders: Math.max(0, Number(customer.previousOrders ?? 0) - 1),
+          outstandingBalance: Math.max(0, Number(customer.outstandingBalance ?? 0) - Number(sale.pendingAmount ?? 0)),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    transaction.delete(saleRef);
+  });
 }
 
 export async function recentSales(count = 8) {

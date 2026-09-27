@@ -75,9 +75,11 @@ export async function recentSales(count = 8) {
 }
 
 export async function salesBetween(from?: string, to?: string) {
-  const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc')];
+  const constraints: QueryConstraint[] = [];
   if (from) constraints.push(where('invoiceDate', '>=', from));
   if (to) constraints.push(where('invoiceDate', '<=', to));
+  constraints.push(orderBy(from || to ? 'invoiceDate' : 'timestamp', 'desc'));
+  if (from || to) constraints.push(orderBy('timestamp', 'desc'));
   const snap = await getDocs(query(collection(db, 'sales'), ...constraints));
   return snap.docs.map((document) => ({ id: document.id, ...document.data() })) as Sale[];
 }

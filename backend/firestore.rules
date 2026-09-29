@@ -48,11 +48,16 @@ service cloud.firestore {
     match /sales/{saleId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.saleStatus == 'Pending';
+      // Older invoices may not have a createdBy or saleStatus field.  The first
+      // employee to update one claims it; completed invoices remain locked.
       allow update: if (isAdmin() || (
         signedIn()
-        && resource.data.createdBy == request.auth.uid
         && request.resource.data.createdBy == request.auth.uid
-      )) && resource.data.saleStatus != 'Complete';
+        && (
+          !('createdBy' in resource.data)
+          || resource.data.createdBy == request.auth.uid
+        )
+      )) && (!('saleStatus' in resource.data) || resource.data.saleStatus != 'Complete');
       allow delete: if isAdmin() || (
         signedIn()
         && resource.data.createdBy == request.auth.uid

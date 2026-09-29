@@ -17,6 +17,13 @@ import {
 import { db } from '../firebase/config';
 import type { Sale } from '../types';
 
+/** Firestore rejects `undefined`; optional invoice fields must be omitted instead. */
+function firestoreSaleData(sale: Omit<Sale, 'id' | 'timestamp'>) {
+  return Object.fromEntries(
+    Object.entries(sale).filter(([, value]) => value !== undefined),
+  );
+}
+
 export async function nextInvoiceNumber(date = new Date()) {
   const year = date.getFullYear();
   const counterRef = doc(db, 'counters', `invoice-${year}`);
@@ -42,7 +49,7 @@ export async function peekNextInvoiceNumber(date = new Date()) {
 
 export async function saveSale(sale: Omit<Sale, 'id' | 'timestamp'>) {
   const docRef = await addDoc(collection(db, 'sales'), {
-    ...sale,
+    ...firestoreSaleData(sale),
     timestamp: serverTimestamp(),
   });
   return docRef.id;
@@ -55,7 +62,7 @@ export async function getSale(id: string) {
 
 export async function updateSale(id: string, sale: Omit<Sale, 'id' | 'timestamp'>) {
   await updateDoc(doc(db, 'sales', id), {
-    ...sale,
+    ...firestoreSaleData(sale),
     updatedAt: serverTimestamp(),
   });
 }

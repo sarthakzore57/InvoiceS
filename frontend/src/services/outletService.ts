@@ -38,6 +38,13 @@ export async function getAreaVisits(areaId: string) {
   return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as VisitRecord);
 }
 
+export async function getOutletVisits(outletId: string) {
+  const snapshot = await getDocs(query(collection(db, 'visits'), where('outletId', '==', outletId)));
+  return snapshot.docs
+    .map((entry) => ({ id: entry.id, ...entry.data() }) as VisitRecord)
+    .sort((a, b) => (b.visitedAt?.toDate?.().getTime() ?? 0) - (a.visitedAt?.toDate?.().getTime() ?? 0));
+}
+
 export async function saveVisit(visit: Omit<VisitRecord, 'id' | 'visitedAt'>) {
   const ref = await addDoc(collection(db, 'visits'), { ...visit, visitedAt: serverTimestamp() });
   await updateDoc(doc(db, 'outlets', visit.outletId), { lastVisitAt: serverTimestamp() });

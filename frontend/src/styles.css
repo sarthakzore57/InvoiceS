@@ -35,7 +35,7 @@
   }
 
   .mobile-nav {
-    @apply grid min-w-0 flex-1 place-items-center gap-1 rounded-lg px-2 py-2 text-[11px] font-bold text-slate-500 dark:text-slate-300;
+    @apply grid w-16 shrink-0 place-items-center gap-1 rounded-lg px-1 py-2 text-center text-[10px] font-bold leading-tight text-slate-500 dark:text-slate-300;
   }
 
   .mobile-nav.active {

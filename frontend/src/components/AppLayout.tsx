@@ -85,15 +85,15 @@ export default function AppLayout() {
             </div>
           </div>
         </header>
-        <main className="p-3 pb-24 sm:p-6 sm:pb-6">
+        <main className="p-3 pb-32 sm:p-6 sm:pb-6">
           <Outlet />
         </main>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex gap-1 border-t border-slate-200 bg-white/95 px-2 py-2 shadow-soft backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95 lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[76px] gap-1 overflow-x-auto border-t border-slate-200 bg-white/95 px-2 py-1 shadow-soft backdrop-blur-xl [padding-bottom:calc(0.25rem+env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-950/95 lg:hidden">
         {nav.map((item) => (
           <NavLink key={item.to} to={item.to} className="mobile-nav">
             <item.icon size={19} />
-            <span className="truncate">{item.label.replace('Create ', '')}</span>
+            <span>{item.label.replace('Create ', '')}</span>
           </NavLink>
         ))}
       </nav>

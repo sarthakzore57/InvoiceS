@@ -77,6 +77,19 @@ export type Outlet = {
   createdAt: Timestamp;
 };
 
+export type VisitRecord = {
+  id?: string;
+  outletId: string;
+  outletName: string;
+  areaId: string;
+  areaName: string;
+  note: string;
+  hasOrder: boolean;
+  createdBy: string;
+  employeeName: string;
+  visitedAt: Timestamp;
+};
+
 export type Sale = {
   id?: string;
   invoiceId: string;

@@ -45,6 +45,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /visits/{visitId} {
+      allow read, create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
     match /sales/{saleId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.saleStatus == 'Pending';
@@ -58,6 +63,10 @@ service cloud.firestore {
           || resource.data.createdBy == request.auth.uid
         )
       )) && (!('saleStatus' in resource.data) || resource.data.saleStatus != 'Complete');
+      allow update: if signedIn()
+        && (!('saleStatus' in resource.data) || resource.data.saleStatus != 'Complete')
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['saleStatus', 'completedAt']);
       allow delete: if isAdmin() || (
         signedIn()
         && resource.data.createdBy == request.auth.uid

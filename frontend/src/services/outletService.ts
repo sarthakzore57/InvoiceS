@@ -1,6 +1,6 @@
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, updateDoc, doc, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import type { Area, Outlet } from '../types';
+import type { Area, Outlet, VisitRecord } from '../types';
 
 export async function getAreas() {
   const snapshot = await getDocs(query(collection(db, 'areas'), orderBy('name')));
@@ -28,7 +28,18 @@ export async function addOutlet(outlet: Omit<Outlet, 'id' | 'createdAt'>) {
 }
 
 export async function getOutlet(id: string) {
-  const { getDoc, doc } = await import('firebase/firestore');
+  const { getDoc } = await import('firebase/firestore');
   const snapshot = await getDoc(doc(db, 'outlets', id));
   return snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Outlet) : null;
+}
+
+export async function getAreaVisits(areaId: string) {
+  const snapshot = await getDocs(query(collection(db, 'visits'), where('areaId', '==', areaId)));
+  return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as VisitRecord);
+}
+
+export async function saveVisit(visit: Omit<VisitRecord, 'id' | 'visitedAt'>) {
+  const ref = await addDoc(collection(db, 'visits'), { ...visit, visitedAt: serverTimestamp() });
+  await updateDoc(doc(db, 'outlets', visit.outletId), { lastVisitAt: serverTimestamp() });
+  return ref.id;
 }

@@ -10,6 +10,7 @@ import Sales from './pages/Sales';
 import ProductPricing from './pages/ProductPricing';
 import Areas from './pages/Areas';
 import Visit from './pages/Visit';
+import VisitNote from './pages/VisitNote';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/products" element={<ProductPricing />} />
         <Route path="/areas" element={<Areas />} />
         <Route path="/visit" element={<Visit />} />
+        <Route path="/visit/:outletId" element={<VisitNote />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

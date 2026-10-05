@@ -11,7 +11,7 @@ import { paymentMethods, productCatalog, snaxlayBusiness, type Outlet, type Prod
 import { formatCurrency, invoiceTotals, itemTotal, roundCurrency } from '../utils/calculations';
 import { createInvoicePdf, downloadPdf } from '../utils/pdf';
 import { getCatalogProducts } from '../services/productService';
-import { getOutlet } from '../services/outletService';
+import { getOutlet, getVisit } from '../services/outletService';
 
 const invoiceSchema = z.object({
   invoiceDate: z.string().min(1, 'Invoice date is required'),
@@ -71,13 +71,14 @@ export default function InvoiceCreate() {
   const [catalog, setCatalog] = useState(productCatalog);
   const [visitOutlet, setVisitOutlet] = useState<Outlet | null>(null);
   const outletId = searchParams.get('outletId');
+  const visitId = searchParams.get('visitId');
 
   useEffect(() => {
     getCatalogProducts().then((products) => {
       setCatalog(products);
-      if (!invoiceId) setItems([blankItem(products)]);
+      if (!invoiceId && !visitId) setItems([blankItem(products)]);
     }).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load product pricing'));
-  }, [invoiceId]);
+  }, [invoiceId, visitId]);
 
   useEffect(() => {
     if (!outletId || invoiceId) return;
@@ -88,6 +89,16 @@ export default function InvoiceCreate() {
       setCustomerInsight(`Visit selected: ${outlet.areaName} | ${outlet.shopName}`);
     }).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load outlet'));
   }, [invoiceId, outletId]);
+
+  useEffect(() => {
+    if (!visitId || !outletId || invoiceId) return;
+    getVisit(visitId).then((visit) => {
+      if (!visit) return;
+      if (visit.proposedItems?.length) setItems(visit.proposedItems.map((item) => ({ ...item, id: crypto.randomUUID() })));
+      if (visit.note) setNotes(visit.note);
+      setCustomerInsight('Invoice prepared from saved visit quotation');
+    }).catch(() => toast.error('Could not load visit quotation'));
+  }, [invoiceId, outletId, visitId]);
 
   useEffect(() => {
     if (!invoiceId) {

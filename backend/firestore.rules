@@ -37,12 +37,12 @@ service cloud.firestore {
 
     match /areas/{areaId} {
       allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow delete: if signedIn();
     }
 
     match /outlets/{outletId} {
       allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow delete: if signedIn();
     }
 
     match /visits/{visitId} {

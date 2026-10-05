@@ -15,24 +15,29 @@ import { collection, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { createInvoicePdf, downloadPdf } from '../utils/pdf';
 import { useAuth } from '../contexts/AuthContext';
+import { getAllOutlets } from '../services/outletService';
+import type { Outlet } from '../types';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 export default function Dashboard() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [counts, setCounts] = useState({ vendors: 0, customers: 0 });
+  const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [saleData, vendorCount, customerCount] = await Promise.all([
+        const [saleData, vendorCount, customerCount, outletData] = await Promise.all([
           salesBetween(),
           getCountFromServer(collection(db, 'vendors')),
           getCountFromServer(collection(db, 'customers')),
+          getAllOutlets(),
         ]);
         setSales(saleData);
         setCounts({ vendors: vendorCount.data().count, customers: customerCount.data().count });
+        setOutlets(outletData);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Could not load dashboard');
       } finally {
@@ -45,6 +50,7 @@ export default function Dashboard() {
   const metrics = useMemo(() => todayMetrics(sales, counts.vendors, counts.customers), [sales, counts]);
   const daily = groupedSales(sales, 'daily').slice(-10);
   const categories = categorySales(sales);
+  const gradeCounts = { A: outlets.filter((outlet) => outlet.grade === 'A').length, B: outlets.filter((outlet) => outlet.grade === 'B').length, C: outlets.filter((outlet) => (outlet.grade ?? 'C') === 'C').length };
 
   async function handleExport() {
     const data = await recentSales(1000);
@@ -76,6 +82,8 @@ export default function Dashboard() {
         <StatCard label="Total Customers" value={metrics.totalCustomers} icon={Users} />
         <StatCard label="Total Vendors" value={metrics.totalVendors} icon={Store} />
       </div>
+
+      <section className="panel"><div className="flex items-center justify-between"><div><h2 className="text-lg font-black">Outlet Grades</h2><p className="text-sm text-slate-500">{outlets.length} outlets in total</p></div><Link className="text-sm font-bold text-brand" to="/areas">Manage outlets</Link></div><div className="mt-4 grid grid-cols-3 gap-3"><GradeCount grade="A" count={gradeCounts.A} /><GradeCount grade="B" count={gradeCounts.B} /><GradeCount grade="C" count={gradeCounts.C} /></div></section>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <section className="panel">
@@ -123,6 +131,8 @@ export default function Dashboard() {
     </div>
   );
 }
+
+function GradeCount({ grade, count }: { grade: 'A' | 'B' | 'C'; count: number }) { return <div className="rounded-lg bg-slate-100 p-3 text-center dark:bg-slate-800"><p className="text-2xl font-black text-brand">{count}</p><p className="text-xs font-bold uppercase text-slate-500">Grade {grade}</p></div>; }
 
 export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDeleted?: () => void }) {
   const { employee, user } = useAuth();

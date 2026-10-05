@@ -74,6 +74,7 @@ export type Outlet = {
   address: string;
   latitude?: number;
   longitude?: number;
+  grade?: 'A' | 'B' | 'C';
   createdAt: Timestamp;
 };
 
@@ -85,6 +86,7 @@ export type VisitRecord = {
   areaName: string;
   note: string;
   hasOrder: boolean;
+  proposedItems?: ProductItem[];
   createdBy: string;
   employeeName: string;
   visitedAt: Timestamp;

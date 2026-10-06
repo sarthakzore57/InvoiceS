@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Customer } from '../types';
 
@@ -8,8 +8,15 @@ export function customerIdFromMobile(mobile: string, createdBy = '') {
 
 export async function getCustomerByMobile(mobile: string, createdBy: string) {
   const customerId = customerIdFromMobile(mobile, createdBy);
-  const snap = await getDoc(doc(db, 'customers', customerId));
-  return snap.exists() ? (snap.data() as Customer) : null;
+  // A direct read of a document that does not exist is denied by ownership
+  // rules. Query the employee's own customers instead; an empty result is a
+  // valid new customer and does not produce a permission error.
+  const snap = await getDocs(query(
+    collection(db, 'customers'),
+    where('createdBy', '==', createdBy),
+  ));
+  const match = snap.docs.find((entry) => entry.id === customerId);
+  return match ? (match.data() as Customer) : null;
 }
 
 export async function upsertCustomer(input: {
@@ -22,9 +29,8 @@ export async function upsertCustomer(input: {
 }) {
   const customerId = customerIdFromMobile(input.mobile, input.createdBy);
   const ref = doc(db, 'customers', customerId);
-  const existing = await getDoc(ref);
-  if (existing.exists()) {
-    const current = existing.data() as Customer;
+  const current = await getCustomerByMobile(input.mobile, input.createdBy);
+  if (current) {
     await updateDoc(ref, {
       customerName: input.customerName,
       address: input.address,

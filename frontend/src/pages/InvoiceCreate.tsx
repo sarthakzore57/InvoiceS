@@ -176,7 +176,8 @@ export default function InvoiceCreate() {
 
   async function fetchCustomer() {
     if (customerMobile.length !== 10) return;
-    const customer = await getCustomerByMobile(customerMobile);
+    if (!user) return;
+    const customer = await getCustomerByMobile(customerMobile, user.uid);
     if (customer) {
       setCustomerName(customer.customerName);
       setCustomerAddress(customer.address);
@@ -223,7 +224,7 @@ export default function InvoiceCreate() {
 
       setSaveStep(isEditMode ? 'Preparing invoice...' : 'Saving customer...');
       const customer = isEditMode
-        ? { customerId: existingSale?.customerId ?? customerIdFromMobile(customerMobile) }
+        ? { customerId: existingSale?.customerId ?? customerIdFromMobile(customerMobile, user?.uid) }
         : await withTimeout(
             'Customer save',
             upsertCustomer({
@@ -232,6 +233,7 @@ export default function InvoiceCreate() {
               address: customerAddress,
               grandTotal: totals.grandTotal,
               pendingAmount: totals.pendingAmount,
+              createdBy: user?.uid ?? '',
             }),
           );
 

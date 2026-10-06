@@ -33,6 +33,7 @@ export type Customer = {
   totalPurchase: number;
   previousOrders: number;
   outstandingBalance: number;
+  createdBy: string;
   createdAt: Timestamp;
 };
 
@@ -61,6 +62,7 @@ export type CatalogProduct = {
 export type Area = {
   id?: string;
   name: string;
+  createdBy: string;
   createdAt: Timestamp;
 };
 
@@ -75,6 +77,7 @@ export type Outlet = {
   latitude?: number;
   longitude?: number;
   grade?: 'A' | 'B' | 'C';
+  createdBy: string;
   createdAt: Timestamp;
 };
 

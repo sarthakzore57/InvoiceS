@@ -11,7 +11,7 @@ import { categorySales, groupedSales, todayMetrics } from '../services/reportSer
 import type { Sale } from '../types';
 import { formatCurrency } from '../utils/calculations';
 import { exportSalesToExcel } from '../utils/exportSales';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { collection, getCountFromServer, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { createInvoicePdf, downloadPdf } from '../utils/pdf';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,14 +30,13 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const [saleData, vendorCount, customerCount, outletData] = await Promise.all([
+        const [saleData, customerCount, outletData] = await Promise.all([
           salesBetween(undefined, undefined, employee?.role === 'admin' ? undefined : user?.uid),
-          getCountFromServer(collection(db, 'vendors')),
-          getCountFromServer(collection(db, 'customers')),
-          getAllOutlets(),
+          getCountFromServer(employee?.role === 'admin' ? collection(db, 'customers') : query(collection(db, 'customers'), where('createdBy', '==', user?.uid ?? ''))),
+          getAllOutlets(employee?.role === 'admin' ? undefined : user?.uid),
         ]);
         setSales(saleData);
-        setCounts({ vendors: vendorCount.data().count, customers: customerCount.data().count });
+        setCounts({ vendors: 1, customers: customerCount.data().count });
         setOutlets(outletData);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Could not load dashboard');

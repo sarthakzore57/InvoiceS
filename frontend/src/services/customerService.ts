@@ -2,12 +2,12 @@ import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firest
 import { db } from '../firebase/config';
 import type { Customer } from '../types';
 
-export function customerIdFromMobile(mobile: string) {
-  return `CUS${mobile.replace(/\D/g, '')}`;
+export function customerIdFromMobile(mobile: string, createdBy = '') {
+  return `CUS${createdBy ? `${createdBy}-` : ''}${mobile.replace(/\D/g, '')}`;
 }
 
-export async function getCustomerByMobile(mobile: string) {
-  const customerId = customerIdFromMobile(mobile);
+export async function getCustomerByMobile(mobile: string, createdBy: string) {
+  const customerId = customerIdFromMobile(mobile, createdBy);
   const snap = await getDoc(doc(db, 'customers', customerId));
   return snap.exists() ? (snap.data() as Customer) : null;
 }
@@ -18,8 +18,9 @@ export async function upsertCustomer(input: {
   address: string;
   grandTotal: number;
   pendingAmount: number;
+  createdBy: string;
 }) {
-  const customerId = customerIdFromMobile(input.mobile);
+  const customerId = customerIdFromMobile(input.mobile, input.createdBy);
   const ref = doc(db, 'customers', customerId);
   const existing = await getDoc(ref);
   if (existing.exists()) {
@@ -42,6 +43,7 @@ export async function upsertCustomer(input: {
     totalPurchase: input.grandTotal,
     previousOrders: 1,
     outstandingBalance: input.pendingAmount,
+    createdBy: input.createdBy,
     createdAt: serverTimestamp(),
   };
   await setDoc(ref, customer);

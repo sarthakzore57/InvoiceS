@@ -3,17 +3,20 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { addArea, addOutlet, deleteArea, deleteOutlet, getAllOutlets, getAreas, updateArea, updateOutlet } from '../services/outletService';
 import type { Area, Outlet } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 type OutletForm = { areaId: string; shopName: string; contactNumber: string; gst: string; address: string; grade: 'A' | 'B' | 'C' };
 const blankForm: OutletForm = { areaId: '', shopName: '', contactNumber: '', gst: '', address: '', grade: 'C' };
 
 export default function Areas() {
+  const { user, employee } = useAuth();
   const [areas, setAreas] = useState<Area[]>([]); const [outlets, setOutlets] = useState<Outlet[]>([]); const [areaName, setAreaName] = useState(''); const [editingArea, setEditingArea] = useState<string | null>(null); const [editingOutlet, setEditingOutlet] = useState<string | null>(null); const [form, setForm] = useState<OutletForm>(blankForm);
-  const load = () => Promise.all([getAreas(), getAllOutlets()]).then(([areaData, outletData]) => { setAreas(areaData); setOutlets(outletData); }).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load areas'));
-  useEffect(() => { load(); }, []);
-  async function saveArea() { if (!areaName.trim()) return; try { if (editingArea) await updateArea(editingArea, areaName); else await addArea(areaName); setAreaName(''); setEditingArea(null); await load(); toast.success('Area saved'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save area'); } }
+  const ownerId = employee?.role === 'admin' ? undefined : user?.uid;
+  const load = () => Promise.all([getAreas(ownerId), getAllOutlets(ownerId)]).then(([areaData, outletData]) => { setAreas(areaData); setOutlets(outletData); }).catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load areas'));
+  useEffect(() => { load(); }, [ownerId]);
+  async function saveArea() { if (!areaName.trim() || !user) return; try { if (editingArea) await updateArea(editingArea, areaName); else await addArea(areaName, user.uid); setAreaName(''); setEditingArea(null); await load(); toast.success('Area saved'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save area'); } }
   async function removeArea(area: Area) { if (!area.id || !window.confirm(`Delete ${area.name} and its outlets?`)) return; try { await deleteArea(area.id); await load(); toast.success('Area deleted'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not delete area'); } }
-  async function saveOutlet() { const area = areas.find((item) => item.id === form.areaId); if (!area || !form.shopName.trim() || !/^[6-9]\d{9}$/.test(form.contactNumber) || !form.address.trim()) return toast.error('Select area and enter shop name, valid mobile, and address'); const data = { ...form, areaName: area.name, shopName: form.shopName.trim(), contactNumber: form.contactNumber.trim(), gst: form.gst.trim(), address: form.address.trim() }; try { if (editingOutlet) await updateOutlet(editingOutlet, data); else await addOutlet(data); setForm(blankForm); setEditingOutlet(null); await load(); toast.success('Outlet saved'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save outlet'); } }
+  async function saveOutlet() { const area = areas.find((item) => item.id === form.areaId); if (!area || !user || !form.shopName.trim() || !/^[6-9]\d{9}$/.test(form.contactNumber) || !form.address.trim()) return toast.error('Select area and enter shop name, valid mobile, and address'); const data = { ...form, areaName: area.name, shopName: form.shopName.trim(), contactNumber: form.contactNumber.trim(), gst: form.gst.trim(), address: form.address.trim(), createdBy: editingOutlet ? (outlets.find((outlet) => outlet.id === editingOutlet)?.createdBy ?? user.uid) : user.uid }; try { if (editingOutlet) await updateOutlet(editingOutlet, data); else await addOutlet(data); setForm(blankForm); setEditingOutlet(null); await load(); toast.success('Outlet saved'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save outlet'); } }
   function useLocation() { toast.info('Location lookup is disabled. Please enter the outlet address.'); }
   function editOutlet(outlet: Outlet) { setEditingOutlet(outlet.id ?? null); setForm({ areaId: outlet.areaId, shopName: outlet.shopName, contactNumber: outlet.contactNumber, gst: outlet.gst ?? '', address: outlet.address, grade: outlet.grade ?? 'C' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   async function removeOutlet(outlet: Outlet) { if (!outlet.id || !window.confirm(`Delete outlet ${outlet.shopName}?`)) return; try { await deleteOutlet(outlet.id); await load(); toast.success('Outlet deleted'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not delete outlet'); } }

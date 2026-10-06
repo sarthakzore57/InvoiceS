@@ -30,8 +30,9 @@ service cloud.firestore {
     }
 
     match /customers/{customerId} {
-      allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /products/{productId} {
@@ -40,18 +41,21 @@ service cloud.firestore {
     }
 
     match /areas/{areaId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /outlets/{outletId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /visits/{visitId} {
-      allow read, create: if signedIn();
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /sales/{saleId} {

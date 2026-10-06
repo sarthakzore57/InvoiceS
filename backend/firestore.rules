@@ -14,9 +14,9 @@ service cloud.firestore {
     }
 
     match /employees/{employeeUid} {
-      allow create: if signedIn()
+      allow create: if isAdmin() || (signedIn()
         && employeeUid == request.auth.uid
-        && request.resource.data.role == 'employee';
+        && request.resource.data.role == 'employee');
       allow read: if signedIn();
       allow update: if isAdmin() || (signedIn()
         && employeeUid == request.auth.uid

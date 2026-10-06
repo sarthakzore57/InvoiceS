@@ -3,7 +3,7 @@ import { Eye, LogIn } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { z } from 'zod';
 import { loginEmployee } from '../services/authService';
@@ -52,9 +52,6 @@ export default function Login() {
           <LogIn size={18} />
           Login
         </button>
-        <p className="text-center text-sm text-slate-500">
-          New employee? <Link className="font-bold text-brand" to="/register">Register</Link>
-        </p>
       </form>
     </AuthFrame>
   );

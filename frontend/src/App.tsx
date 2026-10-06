@@ -4,7 +4,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import InvoiceCreate from './pages/InvoiceCreate';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import Reports from './pages/Reports';
 import Sales from './pages/Sales';
 import ProductPricing from './pages/ProductPricing';
@@ -17,7 +16,6 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
       <Route
         element={
           <ProtectedRoute>

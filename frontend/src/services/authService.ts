@@ -1,15 +1,9 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  type User,
-} from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import type { Employee, Role } from '../types';
 
-type RegisterInput = {
+export type RegisterInput = {
   name: string;
   mobile: string;
   email: string;
@@ -17,11 +11,16 @@ type RegisterInput = {
   employeeId: string;
 };
 
-export async function registerEmployee(data: RegisterInput) {
-  const credential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-  await updateProfile(credential.user, { displayName: data.name });
-  await setDoc(doc(db, 'employees', credential.user.uid), {
-    uid: credential.user.uid,
+export async function createEmployeeAsAdmin(data: RegisterInput) {
+  const admin = auth.currentUser;
+  if (!admin) throw new Error('Admin session has expired');
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${import.meta.env.VITE_FIREBASE_API_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: data.email, password: data.password, returnSecureToken: true }),
+  });
+  const account = await response.json() as { localId?: string; error?: { message?: string } };
+  if (!response.ok || !account.localId) throw new Error(account.error?.message?.replace(/_/g, ' ') ?? 'Could not create employee account');
+  await setDoc(doc(db, 'employees', account.localId), {
+    uid: account.localId,
     employeeId: data.employeeId,
     name: data.name,
     email: data.email,
@@ -29,7 +28,7 @@ export async function registerEmployee(data: RegisterInput) {
     role: 'employee' satisfies Role,
     createdAt: serverTimestamp(),
   });
-  return credential.user;
+  return account.localId;
 }
 
 export async function loginEmployee(email: string, password: string) {

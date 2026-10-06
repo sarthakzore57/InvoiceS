@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { productCatalog, type CatalogProduct } from '../types';
 
@@ -27,3 +27,5 @@ export async function updateProductMrp(id: string, mrp: number) {
 export async function addCatalogProduct(product: CatalogProduct) {
   await setDoc(doc(db, 'products', product.id), { ...product, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 }
+
+export async function deleteCatalogProduct(id: string) { await deleteDoc(doc(db, 'products', id)); }

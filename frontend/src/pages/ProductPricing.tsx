@@ -1,7 +1,7 @@
-import { Plus, Save, Search } from 'lucide-react';
+import { Plus, Save, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { addCatalogProduct, getCatalogProducts, updateProductMrp } from '../services/productService';
+import { addCatalogProduct, deleteCatalogProduct, getCatalogProducts, updateProductMrp } from '../services/productService';
 import type { CatalogProduct } from '../types';
 
 export default function ProductPricing() {
@@ -48,6 +48,7 @@ export default function ProductPricing() {
       toast.error(error instanceof Error ? error.message : 'Could not add product');
     }
   }
+  async function removeProduct(product: CatalogProduct) { if (!window.confirm(`Delete ${product.productName} ${product.variant}?`)) return; try { await deleteCatalogProduct(product.id); setProducts((current) => current.filter((item) => item.id !== product.id)); toast.success('Product deleted'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not delete product'); } }
 
   return <div className="space-y-4 sm:space-y-5">
     <div><h1 className="text-xl font-black tracking-tight sm:text-2xl">Product MRP</h1><p className="text-sm text-slate-500 dark:text-slate-400">Set the MRP for every product and weight. Invoice rows use these values by default.</p></div>
@@ -59,13 +60,13 @@ export default function ProductPricing() {
     </section>
     <section className="panel">
       <div className="relative mb-4 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input className="field pl-10" placeholder="Find product or weight" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-      <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Product</th><th className="px-3 py-2">Weight</th><th className="px-3 py-2">MRP</th><th className="px-3 py-2" /></tr></thead><tbody>{visibleProducts.map((product) => <PriceRow key={product.id} product={product} saving={saving === product.id} onSave={saveMrp} />)}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Product</th><th className="px-3 py-2">Weight</th><th className="px-3 py-2">MRP</th><th className="px-3 py-2" /></tr></thead><tbody>{visibleProducts.map((product) => <PriceRow key={product.id} product={product} saving={saving === product.id} onSave={saveMrp} onDelete={removeProduct} />)}</tbody></table></div>
     </section>
   </div>;
 }
 
-function PriceRow({ product, saving, onSave }: { product: CatalogProduct; saving: boolean; onSave: Function }) {
+function PriceRow({ product, saving, onSave, onDelete }: { product: CatalogProduct; saving: boolean; onSave: Function; onDelete: Function }) {
   const [value, setValue] = useState(String(product.mrp));
   useEffect(() => setValue(String(product.mrp)), [product.mrp]);
-  return <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-3 font-bold">{product.productName}</td><td className="px-3 py-3">{product.variant}</td><td className="px-3 py-2"><input className="field max-w-44" type="number" min="0" value={value} onChange={(event) => setValue(event.target.value)} /></td><td className="px-3 py-2"><button className="icon-btn" onClick={() => onSave({ product, value })} disabled={saving} title="Save MRP"><Save size={16} /></button></td></tr>;
+  return <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-3 font-bold">{product.productName}</td><td className="px-3 py-3">{product.variant}</td><td className="px-3 py-2"><input className="field max-w-44" type="number" min="0" value={value} onChange={(event) => setValue(event.target.value)} /></td><td className="flex gap-2 px-3 py-2"><button className="icon-btn" onClick={() => onSave({ product, value })} disabled={saving} title="Save MRP"><Save size={16} /></button><button className="icon-btn text-red-600" onClick={() => onDelete(product)} title="Delete product"><Trash2 size={16} /></button></td></tr>;
 }

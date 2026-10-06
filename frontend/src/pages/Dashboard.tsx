@@ -229,7 +229,7 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
       <table className="w-full min-w-[860px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
           <tr>
-            {['Invoice Number', 'Customer', 'Vendor', 'Date', 'Amount', 'Status', 'Actions'].map((heading) => (
+            {['Invoice Number', 'Customer', 'Date', 'Amount', 'Status', 'Actions'].map((heading) => (
               <th key={heading} className="border-b border-slate-200 px-3 py-3 dark:border-slate-800">{heading}</th>
             ))}
           </tr>
@@ -239,7 +239,6 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
             <tr key={sale.id ?? sale.invoiceNumber} className="border-b border-slate-100 dark:border-slate-800">
               <td className="px-3 py-3 font-bold">{sale.invoiceNumber}</td>
               <td className="px-3 py-3">{sale.customerName}</td>
-              <td className="px-3 py-3">{sale.vendorName}</td>
               <td className="px-3 py-3">{sale.invoiceDate}</td>
               <td className="px-3 py-3">{formatCurrency(sale.grandTotal)}</td>
               <td className="px-3 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.saleStatus ?? 'Pending'}</span></td>

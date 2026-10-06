@@ -30,8 +30,15 @@ export async function getOutlets(areaId: string, createdBy?: string) {
 }
 
 export async function getAllOutlets(createdBy?: string) {
-  const snapshot = await getDocs(query(collection(db, 'outlets'), ...(createdBy ? [where('createdBy', '==', createdBy)] : []), orderBy('shopName')));
-  return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as Outlet);
+  // Sorting employee-owned outlets in the browser avoids waiting for a new
+  // composite Firestore index after an employee account is created.
+  const snapshot = await getDocs(query(
+    collection(db, 'outlets'),
+    ...(createdBy ? [where('createdBy', '==', createdBy)] : [orderBy('shopName')]),
+  ));
+  return snapshot.docs
+    .map((entry) => ({ id: entry.id, ...entry.data() }) as Outlet)
+    .sort((a, b) => a.shopName.localeCompare(b.shopName));
 }
 
 export async function addOutlet(outlet: Omit<Outlet, 'id' | 'createdAt'>) {

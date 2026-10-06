@@ -29,7 +29,7 @@ export default function Sales() {
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
     return sales.filter((sale) =>
-      [sale.invoiceNumber, sale.customerName, sale.customerMobile, sale.invoiceDate, sale.paymentMethod]
+      [sale.invoiceNumber, sale.customerName, sale.customerMobile, sale.employeeName, sale.invoiceDate, sale.paymentMethod]
         .join(' ')
         .toLowerCase()
         .includes(term),

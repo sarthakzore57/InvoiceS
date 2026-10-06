@@ -197,6 +197,7 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
               <div className="min-w-0">
                 <p className="truncate text-sm font-black">{sale.invoiceNumber}</p>
                 <p className="mt-1 truncate text-sm font-semibold text-slate-600 dark:text-slate-300">{sale.customerName}</p>
+                <p className="mt-1 truncate text-xs font-semibold text-slate-500">Created by {sale.employeeName || 'Unknown employee'}</p>
               </div>
               <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.saleStatus ?? 'Pending'}</span>
             </div>
@@ -226,10 +227,10 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
         ))}
       </div>
       <div className="hidden overflow-x-auto md:block">
-      <table className="w-full min-w-[860px] text-left text-sm">
+      <table className="w-full min-w-[960px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
           <tr>
-            {['Invoice Number', 'Customer', 'Date', 'Amount', 'Status', 'Actions'].map((heading) => (
+            {['Invoice Number', 'Customer', 'Employee', 'Date', 'Amount', 'Status', 'Actions'].map((heading) => (
               <th key={heading} className="border-b border-slate-200 px-3 py-3 dark:border-slate-800">{heading}</th>
             ))}
           </tr>
@@ -239,6 +240,7 @@ export function RecentSalesTable({ sales, onDeleted }: { sales: Sale[]; onDelete
             <tr key={sale.id ?? sale.invoiceNumber} className="border-b border-slate-100 dark:border-slate-800">
               <td className="px-3 py-3 font-bold">{sale.invoiceNumber}</td>
               <td className="px-3 py-3">{sale.customerName}</td>
+              <td className="px-3 py-3 font-semibold">{sale.employeeName || 'Unknown employee'}</td>
               <td className="px-3 py-3">{sale.invoiceDate}</td>
               <td className="px-3 py-3">{formatCurrency(sale.grandTotal)}</td>
               <td className="px-3 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-brand">{sale.saleStatus ?? 'Pending'}</span></td>

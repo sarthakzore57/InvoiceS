@@ -17,7 +17,9 @@ service cloud.firestore {
       allow create: if isAdmin() || (signedIn()
         && employeeUid == request.auth.uid
         && request.resource.data.role == 'employee');
-      allow read: if signedIn();
+      // Employees can only see their own profile; the staff directory belongs
+      // to the administrator.
+      allow read: if isAdmin() || (signedIn() && employeeUid == request.auth.uid);
       allow update: if isAdmin() || (signedIn()
         && employeeUid == request.auth.uid
         && request.resource.data.role == resource.data.role);
@@ -25,14 +27,16 @@ service cloud.firestore {
     }
 
     match /vendors/{vendorId} {
-      allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow read, create, update, delete: if isAdmin();
     }
 
     match /customers/{customerId} {
       allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin() || (signedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy);
+      allow delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /products/{productId} {
@@ -43,38 +47,39 @@ service cloud.firestore {
     match /areas/{areaId} {
       allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin() || (signedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy);
+      allow delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /outlets/{outletId} {
       allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin() || (signedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy);
+      allow delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /visits/{visitId} {
       allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin() || (signedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy);
+      allow delete: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
     }
 
     match /sales/{saleId} {
       allow read: if isAdmin() || (signedIn() && resource.data.createdBy == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.saleStatus == 'Pending';
-      // Older invoices may not have a createdBy or saleStatus field.  The first
-      // employee to update one claims it; completed invoices remain locked.
-      allow update: if (isAdmin() || (
-        signedIn()
+      allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid
-        && (
-          !('createdBy' in resource.data)
-          || resource.data.createdBy == request.auth.uid
-        )
-      )) && (!('saleStatus' in resource.data) || resource.data.saleStatus != 'Complete');
-      allow update: if signedIn()
-        && (!('saleStatus' in resource.data) || resource.data.saleStatus != 'Complete')
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['saleStatus', 'completedAt']);
+        && request.resource.data.saleStatus == 'Pending';
+      allow update: if isAdmin() || (signedIn()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy
+        && (!('saleStatus' in resource.data) || resource.data.saleStatus != 'Complete'));
       allow delete: if isAdmin() || (
         signedIn()
         && resource.data.createdBy == request.auth.uid

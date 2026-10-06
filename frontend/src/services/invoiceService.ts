@@ -101,8 +101,9 @@ export async function recentSales(count = 8) {
   return snap.docs.map((document) => ({ id: document.id, ...document.data() })) as Sale[];
 }
 
-export async function salesBetween(from?: string, to?: string) {
+export async function salesBetween(from?: string, to?: string, createdBy?: string) {
   const constraints: QueryConstraint[] = [];
+  if (createdBy) constraints.push(where('createdBy', '==', createdBy));
   if (from) constraints.push(where('invoiceDate', '>=', from));
   if (to) constraints.push(where('invoiceDate', '<=', to));
   constraints.push(orderBy(from || to ? 'invoiceDate' : 'timestamp', 'desc'));

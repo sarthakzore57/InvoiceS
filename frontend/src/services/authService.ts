@@ -33,7 +33,8 @@ export async function registerEmployee(data: RegisterInput) {
 }
 
 export async function loginEmployee(email: string, password: string) {
-  return signInWithEmailAndPassword(auth, email, password);
+  const loginEmail = email.trim().toLowerCase() === 'snaxlay' ? 'snaxlay@snaxlay.local' : email;
+  return signInWithEmailAndPassword(auth, loginEmail, password);
 }
 
 export async function logoutEmployee() {

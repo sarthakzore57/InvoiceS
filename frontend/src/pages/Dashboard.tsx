@@ -25,12 +25,13 @@ export default function Dashboard() {
   const [counts, setCounts] = useState({ vendors: 0, customers: 0 });
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [loading, setLoading] = useState(true);
+  const { employee, user } = useAuth();
 
   useEffect(() => {
     async function load() {
       try {
         const [saleData, vendorCount, customerCount, outletData] = await Promise.all([
-          salesBetween(),
+          salesBetween(undefined, undefined, employee?.role === 'admin' ? undefined : user?.uid),
           getCountFromServer(collection(db, 'vendors')),
           getCountFromServer(collection(db, 'customers')),
           getAllOutlets(),
@@ -45,7 +46,7 @@ export default function Dashboard() {
       }
     }
     load();
-  }, []);
+  }, [employee?.role, user?.uid]);
 
   const metrics = useMemo(() => todayMetrics(sales, counts.vendors, counts.customers), [sales, counts]);
   const daily = groupedSales(sales, 'daily').slice(-10);

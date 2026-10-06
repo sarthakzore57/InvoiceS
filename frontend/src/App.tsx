@@ -11,6 +11,7 @@ import ProductPricing from './pages/ProductPricing';
 import Areas from './pages/Areas';
 import Visit from './pages/Visit';
 import VisitNote from './pages/VisitNote';
+import Admin from './pages/Admin';
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/areas" element={<Areas />} />
         <Route path="/visit" element={<Visit />} />
         <Route path="/visit/:outletId" element={<VisitNote />} />
+        <Route path="/admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

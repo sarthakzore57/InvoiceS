@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { loginEmployee } from '../services/authService';
 
 const schema = z.object({
-  email: z.email('Enter a valid email'),
+  email: z.string().min(2, 'Enter your email or login ID'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -37,8 +37,8 @@ export default function Login() {
   return (
     <AuthFrame title="Employee Login" subtitle="Access Snaxlay sales, invoices, and reports">
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-        <Field label="Email" error={errors.email?.message}>
-          <input className="field" type="email" {...register('email')} />
+        <Field label="Email or Login ID" error={errors.email?.message}>
+          <input className="field" autoComplete="username" {...register('email')} />
         </Field>
         <Field label="Password" error={errors.password?.message}>
           <div className="relative">

@@ -5,20 +5,22 @@ import { RecentSalesTable } from './Dashboard';
 import { salesBetween } from '../services/invoiceService';
 import type { Sale } from '../types';
 import { exportSalesToExcel } from '../utils/exportSales';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Sales() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [search, setSearch] = useState('');
+  const { employee, user } = useAuth();
 
   const loadSales = useCallback(async () => {
     try {
-      setSales(await salesBetween(from || undefined, to || undefined));
+      setSales(await salesBetween(from || undefined, to || undefined, employee?.role === 'admin' ? undefined : user?.uid));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not load sales');
     }
-  }, [from, to]);
+  }, [employee?.role, from, to, user?.uid]);
 
   useEffect(() => {
     loadSales();

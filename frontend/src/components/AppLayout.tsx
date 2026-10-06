@@ -1,24 +1,24 @@
-import { BarChart3, FilePlus2, LayoutDashboard, LogOut, MapPinned, Moon, Search, Sun, TableProperties, Tags, Route } from 'lucide-react';
+import { BarChart3, FilePlus2, LayoutDashboard, LogOut, MapPinned, Moon, Search, Sun, TableProperties, Tags, Route, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { logoutEmployee } from '../services/authService';
 
-const nav = [
+const employeeNav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/invoice/new', label: 'Create Invoice', icon: FilePlus2 },
   { to: '/visit', label: 'Visit', icon: Route },
   { to: '/areas', label: 'Areas & Outlets', icon: MapPinned },
-  { to: '/products', label: 'Product MRP', icon: Tags },
   { to: '/sales', label: 'Sales', icon: TableProperties },
-  { to: '/reports', label: 'Reports', icon: BarChart3 },
 ];
+const adminOnlyNav = [{ to: '/admin', label: 'Admin', icon: Shield }, { to: '/products', label: 'Product MRP', icon: Tags }, { to: '/reports', label: 'Reports', icon: BarChart3 }];
 
 export default function AppLayout() {
   const { employee } = useAuth();
   const navigate = useNavigate();
   const [dark, setDark] = useState(false);
+  const nav = employee?.role === 'admin' ? [...employeeNav, ...adminOnlyNav] : employeeNav;
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);

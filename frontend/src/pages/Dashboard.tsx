@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import EmptyState from '../components/ui/EmptyState';
 import StatCard from '../components/ui/StatCard';
-import { completeSale, deleteSale, recentSales, salesBetween } from '../services/invoiceService';
+import { completeSale, deleteSale, salesBetween } from '../services/invoiceService';
 import { categorySales, groupedSales, todayMetrics } from '../services/reportService';
 import type { Sale } from '../types';
 import { formatCurrency } from '../utils/calculations';
@@ -52,10 +52,7 @@ export default function Dashboard() {
   const categories = categorySales(sales);
   const gradeCounts = { A: outlets.filter((outlet) => outlet.grade === 'A').length, B: outlets.filter((outlet) => outlet.grade === 'B').length, C: outlets.filter((outlet) => (outlet.grade ?? 'C') === 'C').length };
 
-  async function handleExport() {
-    const data = await recentSales(1000);
-    exportSalesToExcel(data);
-  }
+  function handleExport() { exportSalesToExcel(sales); }
 
   return (
     <div className="space-y-6">

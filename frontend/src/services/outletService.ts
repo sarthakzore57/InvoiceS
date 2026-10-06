@@ -16,8 +16,10 @@ export async function updateArea(id: string, name: string) {
   await updateDoc(doc(db, 'areas', id), { name: name.trim(), updatedAt: serverTimestamp() });
 }
 
-export async function deleteArea(id: string) {
-  const outlets = await getOutlets(id);
+export async function deleteArea(id: string, createdBy?: string) {
+  // The ownership filter is required for employee accounts: Firestore rules do
+  // not treat a collection query as a safe filter unless it includes it.
+  const outlets = await getOutlets(id, createdBy);
   const batch = writeBatch(db);
   batch.delete(doc(db, 'areas', id));
   outlets.forEach((outlet) => outlet.id && batch.delete(doc(db, 'outlets', outlet.id)));
